@@ -64,9 +64,9 @@ void light_strip (uint32_t color) {
 	uint32_t pixels[NUM_PIXELS] = {0};
 
 	for (int i = 0; i < NUM_PIXELS; i++) {
-		set_pixel_color (color, i, pixels);
+		set_pixel_color (color, (uint32_t) i, pixels);
 		for (int j = 0; j < NUM_PIXELS; j++) {
-			pio_sm_put_blocking (pio, sm, pixels [j] << 8u);	// Send data to NeoPixels
+			pio_sm_put_blocking (pio, (uint) sm, pixels [j] << 8u);	// Send data to NeoPixels
 		}
 	}
 }
@@ -110,8 +110,8 @@ void light_strip (uint32_t color) {
 #define SWITCH_5	15
 // finger GPIO
 #define SWITCH_6	10
-#define SWITCH_7	09
-#define SWITCH_8	08
+#define SWITCH_7	9
+#define SWITCH_8	8
 
 
 // switches stored as bit table
@@ -194,8 +194,8 @@ int main(void)
 
 	// Neopixels inits
 	// Initialize PIO and load the WS2812 program
-	uint offset = pio_add_program (pio, &ws2812_program);
-	ws2812_program_init (pio, sm, offset, LED_PIN, 800000, false);
+	uint offset = (uint) pio_add_program (pio, &ws2812_program);
+	ws2812_program_init (pio, (uint) sm, offset, LED_PIN, 800000, false);
 	// End of NeoPixel inits
 
 
@@ -207,18 +207,19 @@ int main(void)
 		// manage neopixel led strip: light the strip with the right color; in case of black, wait 200ms before unlighting
 		switch (neoPixelState) {
 			case 0:
-				if (((to_us_since_boot (get_absolute_time()) - neoPixelOnTime)) > 200000)	// paint to black after 200ms
-					light_strip (neoPixelColor (0, 0, 0));	// black
+				if (((to_us_since_boot (get_absolute_time()) - neoPixelOnTime)) > 200000) {	// paint to black after 200ms
+					light_strip (rgb_to_color (0, 0, 0));	// black
 					neoPixelState = 3;						// next time do nothing
+				}
 				break;
 			case 1:
 				neoPixelOnTime = to_us_since_boot (get_absolute_time());
-				light_strip (neoPixelColor (255, 0, 0));	// red
+				light_strip (rgb_to_color (255, 0, 0));	// red
 				neoPixelState = 0;							// next state is black
 				break;
 			case 2:
 				neoPixelOnTime = to_us_since_boot (get_absolute_time());
-				light_strip (neoPixelColor (255, 255, 0));	// yellow
+				light_strip (rgb_to_color (255, 255, 0));	// yellow
 				neoPixelState = 0;							// next state is black
 				break;
 			default:
