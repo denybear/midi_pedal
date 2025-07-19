@@ -12,3 +12,10 @@ install midi_pedal files in a folder in the tinyusb/examples/device/ folder of t
 to compile, go to that folder and do as described in https://docs.tinyusb.org/en/latest/reference/getting_started.html , that is:   
 $ make BOARD=raspberry_pi_pico all
 
+
+New way to compile:
+$ # cmake
+$ mkdir build && cd build
+$ cmake -DBOARD=raspberry_pi_pico ..
+$ cd ..
+$ make
