@@ -39,11 +39,11 @@
  * and we keep these lit for a few ms
  */
 
-#define LED_PIN		9	// GPIO 6 (pin #9) connected to NeoPixel data line
+#define LED_PIN		6	// GPIO 6 (pin #9) connected to NeoPixel data line
 #define NUM_PIXELS	1	// Number of NeoPixels in the strip
 // globals
 PIO pio = pio0;
-int sm = 0;
+uint sm = 0;
 uint64_t neoPixelOnTime = 0;			// current time when Neopixel has been lit 
 int neoPixelState = 3;					// determine whether Neopixel strip should be set to on
 										// 0: light in black
@@ -63,10 +63,10 @@ void light_strip (uint32_t color) {
 
 	uint32_t pixels[NUM_PIXELS] = {0};
 
-	for (int i = 0; i < NUM_PIXELS; i++) {
-		set_pixel_color (color, (uint32_t) i, pixels);
+	for (uint32_t i = 0; i < NUM_PIXELS; i++) {
+		set_pixel_color (color, i, pixels);
 		for (int j = 0; j < NUM_PIXELS; j++) {
-			pio_sm_put_blocking (pio, (uint) sm, pixels [j] << 8u);	// Send data to NeoPixels
+			pio_sm_put_blocking (pio, sm, pixels [j] << 8u);	// Send data to NeoPixels
 		}
 	}
 }
@@ -110,15 +110,15 @@ void light_strip (uint32_t color) {
 #define SWITCH_5	15
 // finger GPIO
 #define SWITCH_6	10
-#define SWITCH_7	9
-#define SWITCH_8	8
+#define SWITCH_7	8
+#define SWITCH_8	9
 
 
 // switches stored as bit table
 #define SW1			1
 #define SW2			2
 #define SW3			4
-#define SW4 		8
+#define SW4			8
 #define SW5			16
 #define SW6			32
 #define SW7			64
@@ -195,7 +195,7 @@ int main(void)
 	// Neopixels inits
 	// Initialize PIO and load the WS2812 program
 	uint offset = (uint) pio_add_program (pio, &ws2812_program);
-	ws2812_program_init (pio, (uint) sm, offset, LED_PIN, 800000, false);
+	ws2812_program_init (pio, sm, offset, LED_PIN, 800000, false);
 	// End of NeoPixel inits
 
 
@@ -204,10 +204,18 @@ int main(void)
 		tud_task(); 		// tinyusb device task
 		midi_task(&pedal);	// manage midi tasks
 
-		// manage neopixel led strip: light the strip with the right color; in case of black, wait 200ms before unlighting
+
+
+		light_strip (rgb_to_color (255, 0, 0));	// red
+		sleep_ms (100);
+
+
+
+
+		// manage neopixel led strip: light the strip with the right color; in case of black, wait 150ms before unlighting
 		switch (neoPixelState) {
 			case 0:
-				if (((to_us_since_boot (get_absolute_time()) - neoPixelOnTime)) > 200000) {	// paint to black after 200ms
+				if (((to_us_since_boot (get_absolute_time()) - neoPixelOnTime)) > 150000) {	// paint to black after 150ms
 					light_strip (rgb_to_color (0, 0, 0));	// black
 					neoPixelState = 3;						// next time do nothing
 				}
@@ -403,8 +411,8 @@ int test_switch (int pedal_to_check, struct pedalboard* pedal)
 		pedal->change_value = previous_result;
 		previous_press = this_press;
 
-		// anti-bounce of 30ms
-		for (i = 0; i < 30; i++) {
+		// anti-bounce of 50ms
+		for (i = 0; i < 50; i++) {
 			// wait 1ms: not sure whether sleep or busy_wait are blocking background threads
 			sleep_ms (1);
 		}
