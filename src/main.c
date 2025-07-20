@@ -88,6 +88,7 @@ void light_strip (uint32_t color) {
 
 // MIDI constants
 #define MIDI_NOTEON	0x90
+#define CIN_NOTEON	0x9
 #define CHANNEL		0     // midi channel 1
 
 // midi notes corresponding to foot pedal switches
@@ -204,14 +205,6 @@ int main(void)
 		tud_task(); 		// tinyusb device task
 		midi_task(&pedal);	// manage midi tasks
 
-
-
-		light_strip (rgb_to_color (255, 0, 0));	// red
-		sleep_ms (100);
-
-
-
-
 		// manage neopixel led strip: light the strip with the right color; in case of black, wait 150ms before unlighting
 		switch (neoPixelState) {
 			case 0:
@@ -222,7 +215,7 @@ int main(void)
 				break;
 			case 1:
 				neoPixelOnTime = to_us_since_boot (get_absolute_time());
-				light_strip (rgb_to_color (255, 0, 0));	// red
+				light_strip (rgb_to_color (255, 0, 0));		// red
 				neoPixelState = 0;							// next state is black
 				break;
 			case 2:
@@ -276,21 +269,32 @@ void midi_task(struct pedalboard *pd)
 {
 	uint8_t const cable_num = 0; // MIDI jack associated with USB endpoint
 
+	// note that we are using USB MIDI EVENTS: https://www.usb.org/sites/default/files/midi10.pdf
+	// these are 4-bytes messages supposed to describe any standard MIDI message
 
 	// The MIDI interface always creates input and output port/jack descriptors
 	// regardless of these being used or not. Therefore incoming traffic should be read
 	// (possibly just discarded) to avoid the sender blocking in IO
 	// here, we check for note_on event, and if received, then we light the Neopixel strip
 	uint8_t packet[4];
+	bool read = false;
 
 	while ( tud_midi_available() ) {
-		tud_midi_packet_read (packet);
+		read = tud_midi_packet_read (packet);	// read midi EVENT
+		
+		// byte 0 = cable number | Code Index Number (CIN)
+		// byte 1 = MIDI 0 
+		// byte 2 = MIDI 1 
+		// byte 3 = MIDI 2
+		// CIN = 0x08 for note off, 0x09 for note on 
 
 		// NeoPixel part
 		// test if note on, and velocity not null: in this case, lite the leds ON (in the while loop)
-		if ((packet [0] == (MIDI_NOTEON | CHANNEL)) && (packet [2] != 0)) {
-			if (packet [1] == 0) neoPixelState = 1;		// first beat (note_on == 0) is red
-			else neoPixelState = 2;						// other beats (other note_ons) are yellow
+		if (read) {
+			if ((packet [1] == (MIDI_NOTEON | CHANNEL)) && (packet [3] != 0)) {
+				if (packet [3] == 127) neoPixelState = 1;	// first beat (velocity == 127) is red
+				else neoPixelState = 2;						// other beats (other velocities) are yellow
+			}
         }
 		// End of Neopixel part
     }
@@ -302,47 +306,52 @@ void midi_task(struct pedalboard *pd)
 	// check if state has changed, ie. pedal has just been pressed or unpressed
 	if (pd->change_state) {
 
-		uint8_t note_on[3] = { MIDI_NOTEON | CHANNEL, 0, 127 };
+		uint8_t note_on[4] = { (cable_num << 4) | CIN_NOTEON, MIDI_NOTEON | CHANNEL, 0, 127 };
 
 		if (pd->value & SW1) {
+// if using stream_write instead of packet_write
+//			uint8_t note_on[3] = { MIDI_NOTEON | CHANNEL, 0, 127 };
+//			note_on[1] = NOTE_SW1;
+//			tud_midi_stream_write(cable_num, note_on, 3);
+
 			// Send Note On for current switch at full velocity (127) on channel.
-			note_on[1] = NOTE_SW1;
-			tud_midi_stream_write(cable_num, note_on, 3);
+			note_on[2] = NOTE_SW1;
+			tud_midi_packet_write (note_on);
 		}
 		if (pd->value & SW2) {
 			// Send Note On for current switch at full velocity (127) on channel.
-			note_on[1] = NOTE_SW2;
-			tud_midi_stream_write(cable_num, note_on, 3);
+			note_on[2] = NOTE_SW2;
+			tud_midi_packet_write (note_on);
 		}
 		if (pd->value & SW3) {
 			// Send Note On for current switch at full velocity (127) on channel.
-			note_on[1] = NOTE_SW3;
-			tud_midi_stream_write(cable_num, note_on, 3);
+			note_on[2] = NOTE_SW3;
+			tud_midi_packet_write (note_on);
 		}
 		if (pd->value & SW4) {
 			// Send Note On for current switch at full velocity (127) on channel.
-			note_on[1] = NOTE_SW4;
-			tud_midi_stream_write(cable_num, note_on, 3);
+			note_on[2] = NOTE_SW4;
+			tud_midi_packet_write (note_on);
 		}
 		if (pd->value & SW5) {
 		// Send Note On for current switch at full velocity (127) on channel.
-			note_on[1] = NOTE_SW5;
-			tud_midi_stream_write(cable_num, note_on, 3);
+			note_on[2] = NOTE_SW5;
+			tud_midi_packet_write (note_on);
 		}
 		if (pd->value & SW6) {
 		// Send Note On for current switch at full velocity (127) on channel.
-			note_on[1] = NOTE_SW6;
-			tud_midi_stream_write(cable_num, note_on, 3);
+			note_on[2] = NOTE_SW6;
+			tud_midi_packet_write (note_on);
 		}
 		if (pd->value & SW7) {
 		// Send Note On for current switch at full velocity (127) on channel.
-			note_on[1] = NOTE_SW7;
-			tud_midi_stream_write(cable_num, note_on, 3);
+			note_on[2] = NOTE_SW7;
+			tud_midi_packet_write (note_on);
 		}
 		if (pd->value & SW8) {
 		// Send Note On for current switch at full velocity (127) on channel.
-			note_on[1] = NOTE_SW8;
-			tud_midi_stream_write(cable_num, note_on, 3);
+			note_on[2] = NOTE_SW8;
+			tud_midi_packet_write (note_on);
 		}
 	}
 }
